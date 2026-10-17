@@ -1,0 +1,489 @@
+<title>Libreta de Propinas</title>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#18232e">
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700&family=Barlow:wght@400;500;600&family=JetBrains+Mono:wght@500&display=swap">
+<style>
+/* Layout: una sola columna tipo app de bolsillo; barra superior fija con dos pestañas, tarjetas de dirección ordenadas por propina promedio. */
+:root{
+  --bg:#eef1f4; --surface:#ffffff; --ink:#18232e; --muted:#5d6b78; --line:#d5dce3;
+  --accent:#e0a100; --accent-ink:#2a1f00; --accent-soft:#fff3cf;
+  --good:#1f8a4c; --good-soft:#dff3e7; --bad:#b4372f; --bad-soft:#fbe4e2; --none:#8a96a2;
+  --display:"Barlow Condensed","Arial Narrow",system-ui,sans-serif;
+  --body:"Barlow",system-ui,-apple-system,"Segoe UI",sans-serif;
+  --mono:"JetBrains Mono",ui-monospace,Menlo,Consolas,monospace;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --bg:#10171e; --surface:#18222c; --ink:#e7edf2; --muted:#9aa8b5; --line:#2a3743;
+  --accent:#f2b72a; --accent-ink:#1c1400; --accent-soft:#3a2f10;
+  --good:#5cc98a; --good-soft:#163526; --bad:#ef7d74; --bad-soft:#3d1d1b; --none:#7d8a96; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#10171e; --surface:#18222c; --ink:#e7edf2; --muted:#9aa8b5; --line:#2a3743;
+  --accent:#f2b72a; --accent-ink:#1c1400; --accent-soft:#3a2f10;
+  --good:#5cc98a; --good-soft:#163526; --bad:#ef7d74; --bad-soft:#3d1d1b; --none:#7d8a96; color-scheme:dark}
+*{box-sizing:border-box}
+:root{padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+body{margin:0}
+[hidden]{display:none!important}
+img{max-width:100%}
+body{background:var(--bg);color:var(--ink);font-family:var(--body);font-size:16px;line-height:1.45}
+body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset-top,0px);z-index:10;background:var(--surface)}
+.wrap{max-width:640px;margin:0 auto;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:0 48px}
+header{position:sticky;top:env(safe-area-inset-top,0px);z-index:5;background:var(--surface);border-bottom:1px solid var(--line)}
+.hrow{max-width:640px;margin:0 auto;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:12px 0;display:flex;align-items:baseline;justify-content:space-between;gap:12px}
+h1{font-family:var(--display);font-weight:700;font-size:1.7rem;letter-spacing:.01em;margin:0;line-height:1}
+h1 b{color:var(--accent)}
+.sum{font-size:.85rem;color:var(--muted);text-align:right}
+.sum strong{color:var(--ink);font-family:var(--mono);font-weight:500}
+.tabs{max-width:640px;margin:0 auto;display:flex;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+.tab{flex:1;background:none;border:0;border-bottom:3px solid transparent;padding:12px 4px 10px;font-family:var(--display);font-size:1.15rem;font-weight:600;letter-spacing:.04em;text-transform:uppercase;color:var(--muted);cursor:pointer}
+.tab[aria-selected="true"]{color:var(--ink);border-bottom-color:var(--accent)}
+.tab:focus-visible,button:focus-visible,input:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+section{display:flex;flex-direction:column;gap:14px;padding-top:16px}
+.drop{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;border:2px dashed var(--line);border-radius:14px;background:var(--surface);padding:22px 16px;text-align:center;cursor:pointer;color:var(--muted)}
+.drop strong{font-family:var(--display);font-size:1.35rem;color:var(--ink);letter-spacing:.02em}
+.drop svg{width:34px;height:34px;color:var(--accent)}
+.drop.has{padding:10px}
+.drop img{max-height:220px;border-radius:8px;object-fit:contain}
+.btn{appearance:none;border:0;border-radius:10px;padding:13px 16px;font:600 1rem var(--body);cursor:pointer;background:var(--accent);color:var(--accent-ink)}
+.btn[disabled]{opacity:.55;cursor:default}
+.btn.ghost{background:transparent;color:var(--ink);border:1px solid var(--line)}
+.btn.sm{padding:8px 12px;font-size:.9rem}
+.row{display:flex;gap:10px;flex-wrap:wrap}
+.row>.btn{flex:1}
+.status{font-size:.92rem;color:var(--muted);min-height:1.2em}
+.status.err{color:var(--bad)}
+.lbl{font-family:var(--display);font-size:.95rem;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin:6px 0 -4px}
+.list{display:flex;flex-direction:column;gap:10px}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:12px 14px;display:grid;grid-template-columns:auto 1fr auto;gap:4px 12px;align-items:center}
+.rank{font-family:var(--display);font-size:1.6rem;font-weight:700;width:1.6ch;text-align:center;color:var(--muted)}
+.card.top .rank{color:var(--accent)}
+.addr{min-width:0;font-weight:600;line-height:1.25;overflow-wrap:anywhere}
+.meta{font-size:.82rem;color:var(--muted);font-family:var(--mono);margin-top:2px}
+.avg{text-align:right;font-family:var(--mono);font-size:1.15rem;white-space:nowrap}
+.avg small{display:block;font-family:var(--body);font-size:.75rem;color:var(--muted)}
+.pill{display:inline-block;font:600 .72rem var(--body);letter-spacing:.06em;text-transform:uppercase;padding:2px 8px;border-radius:99px;margin-top:4px}
+.p-good{background:var(--good-soft);color:var(--good)}
+.p-mid{background:var(--accent-soft);color:var(--ink)}
+.p-bad{background:var(--bad-soft);color:var(--bad)}
+.p-none{background:transparent;color:var(--none);border:1px solid var(--line)}
+.actions{grid-column:1/-1;display:flex;gap:8px;flex-wrap:wrap;margin-top:8px}
+.tipbox{grid-column:1/-1;display:flex;flex-direction:column;gap:8px;margin-top:8px;padding-top:10px;border-top:1px dashed var(--line)}
+.chips{display:flex;gap:6px;flex-wrap:wrap}
+.chip{border:1px solid var(--line);background:var(--bg);color:var(--ink);border-radius:99px;padding:6px 12px;font:500 .9rem var(--mono);cursor:pointer}
+.chip.zero{font-family:var(--body)}
+input[type=text],input[type=number],input[type=search]{width:100%;min-width:0;border:1px solid var(--line);background:var(--bg);color:var(--ink);border-radius:10px;padding:11px 12px;font:500 1rem var(--body)}
+input.money{font-family:var(--mono)}
+.inrow{display:flex;gap:8px}
+.inrow input{flex:1}
+.hist{grid-column:1/-1;margin-top:8px;font-size:.88rem;display:flex;flex-direction:column;gap:4px}
+.hist div{display:flex;justify-content:space-between;gap:8px;font-family:var(--mono);font-variant-numeric:tabular-nums;border-bottom:1px solid var(--line);padding:4px 0}
+.hist button{background:none;border:0;color:var(--bad);cursor:pointer;font-size:.85rem}
+.empty{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:18px;color:var(--muted);font-size:.95rem}
+.empty b{color:var(--ink)}
+.toast{position:fixed;left:50%;bottom:calc(20px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);background:var(--ink);color:var(--bg);padding:10px 16px;border-radius:10px;font-weight:600;z-index:20;max-width:calc(100% - 32px)}
+.legend{font-size:.82rem;color:var(--muted)}
+@media (prefers-reduced-motion:no-preference){.card{transition:border-color .15s}}
+</style>
+
+<header>
+  <div class="hrow">
+    <h1>Libreta de <b>Propinas</b></h1>
+    <div class="sum" id="sum">Hoy <strong>$ 0</strong></div>
+  </div>
+  <div class="tabs" role="tablist">
+    <button class="tab" role="tab" id="t-scan" aria-selected="true">Escanear</button>
+    <button class="tab" role="tab" id="t-dirs" aria-selected="false">Registro</button>
+  </div>
+</header>
+
+<div class="wrap">
+  <section id="v-scan">
+    <label class="drop" id="drop" for="file">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 8h3l2-3h6l2 3h3v11H4z"/><circle cx="12" cy="13" r="4"/></svg>
+      <strong>Sacá o elegí la foto de la pantalla</strong>
+      <span>La lista de "Armar Viaje" con las direcciones</span>
+    </label>
+    <input type="file" id="file" accept="image/*" hidden>
+    <div class="row">
+      <button class="btn" id="read" disabled>Leer direcciones</button>
+    </div>
+    <div class="status" id="status"></div>
+
+    <div class="lbl" id="resLbl" hidden>Ordenadas por propina promedio</div>
+    <div class="list" id="results"></div>
+    <div class="row" id="addRowWrap" hidden>
+      <button class="btn ghost sm" id="addRow">+ Agregar dirección que no leyó</button>
+    </div>
+    <p class="legend" id="legend" hidden>La lectura se hace en tu celular, sin IA ni cuota, y las propinas quedan guardadas en este navegador. Si una dirección se leyó mal, tocá "Corregir". Una entrega sin propina se carga con $ 0 y baja el promedio.</p>
+  </section>
+
+  <section id="v-dirs" hidden>
+    <div class="card" style="grid-template-columns:1fr">
+      <div class="lbl" style="margin:0">Cargar propina a mano</div>
+      <input type="text" id="mAddr" placeholder="Dirección, ej: Pueblo Yapeyú 257 2° A" autocomplete="off">
+      <div class="inrow">
+        <input type="number" id="mAmt" class="money" inputmode="numeric" placeholder="Monto $ (0 si no dio)">
+        <button class="btn" id="mSave">Guardar</button>
+      </div>
+    </div>
+    <input type="search" id="q" placeholder="Buscar dirección">
+    <div class="row" id="backup" hidden>
+      <button class="btn ghost sm" id="exp">Guardar copia de seguridad</button>
+      <label class="btn ghost sm" for="impFile" style="text-align:center">Restaurar copia</label>
+      <input type="file" id="impFile" accept="application/json,.json" hidden>
+    </div>
+    <div class="list" id="dirs"></div>
+  </section>
+</div>
+<div class="toast" id="toast" hidden></div>
+
+<script src="tesseract.min.js"></script>
+<script>
+const $ = s => document.querySelector(s);
+const fmt = n => "$ " + Math.round(n).toLocaleString("es-AR");
+let db = null, uid = null, col = null;
+let DIRS = new Map();          // id -> {dir, entregas:[{m,f,t}]}
+let rows = [];                 // resultados del escaneo
+let file = null, openTip = null, openHist = null;
+
+/* ---------- normalización y coincidencias ---------- */
+function norm(s){
+  return String(s||"").toUpperCase().normalize("NFD").replace(/[̀-ͯ]/g,"")
+    .replace(/[°º]/g," ").replace(/\bAVDR\b/g,"AV DR").replace(/[^A-Z0-9 ]/g," ")
+    .replace(/\b(AV|AVDA|AVENIDA|DR|DOCTOR|GRAL|GENERAL|PJE|PASAJE|CALLE|PISO|DTO|DPTO|DEPTO|DEPARTAMENTO)\b/g," ")
+    .replace(/\s+/g," ").trim();
+}
+const idOf = s => norm(s).replace(/ /g,"-").slice(0,180) || "sin-direccion";
+function lev(a,b){const m=a.length,n=b.length;if(!m)return n;if(!n)return m;let p=[...Array(n+1).keys()];for(let i=1;i<=m;i++){let c=[i];for(let j=1;j<=n;j++)c[j]=Math.min(p[j]+1,c[j-1]+1,p[j-1]+(a[i-1]===b[j-1]?0:1));p=c}return p[n]}
+function findMatch(text){
+  const id = idOf(text); if (DIRS.has(id)) return id;
+  const k = norm(text), nums = k.match(/\d+/g)||[];
+  let best=null, score=0;
+  for (const [did, d] of DIRS){
+    const kk = norm(d.dir), kn = kk.match(/\d+/g)||[];
+    if (kn.length !== nums.length) continue;
+    const sl = t => t.split(" ").filter(w=>/^[A-Z]$/.test(w)).join("");   // letras sueltas = departamento
+    if (sl(kk) !== sl(k)) continue;
+    // piso y depto tienen que ser iguales; en la altura (3+ dígitos) se tolera un dígito mal leído
+    let dn = 0, ok = true;
+    kn.forEach((n,j) => { if (n===nums[j]) return; if (n.length>=3 && nums[j].length>=3 && lev(n,nums[j])===1) dn++; else ok=false; });
+    if (!ok || dn > 1) continue;
+    const sim = 1 - lev(k,kk)/Math.max(k.length,kk.length) - dn*0.06;
+    if (sim > score){score=sim;best=did}
+  }
+  return score >= 0.78 ? best : null;
+}
+function stats(d){
+  const e = d?.entregas||[]; if (!e.length) return null;
+  const tot = e.reduce((a,x)=>a+x.m,0), con = e.filter(x=>x.m>0).length;
+  return {avg: tot/e.length, n: e.length, con, last: e[e.length-1]};
+}
+function pill(st){
+  if (!st) return '<span class="pill p-none">Sin datos</span>';
+  if (st.avg >= 1000 && st.con/st.n >= .6) return '<span class="pill p-good">Buena propina</span>';
+  if (st.avg > 0) return '<span class="pill p-mid">A veces da</span>';
+  return '<span class="pill p-bad">No da propina</span>';
+}
+const esc = s => String(s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+
+/* ---------- guardado ---------- */
+async function addTip(dirText, monto, ticket){
+  const mid = findMatch(dirText);
+  const id = mid || idOf(dirText);
+  const cur = DIRS.get(id) || {dir: dirText.trim(), entregas: []};
+  const next = {dir: cur.dir, entregas: [...cur.entregas, {m: Math.max(0, Number(monto)||0), f: new Date().toISOString(), t: ticket||""}]};
+  DIRS.set(id, next); renderAll();
+  if (LOCAL){ lsSave(); toast(monto>0 ? "Propina de "+fmt(monto)+" guardada" : "Entrega sin propina guardada"); return; }
+  if (!col){ toast("Sin conexión al registro: este dato no quedó guardado"); return; }
+  try { await col.doc(id).set(next); toast(monto>0 ? "Propina de "+fmt(monto)+" guardada" : "Entrega sin propina guardada"); }
+  catch(e){ toast(e.code==="quota_exceeded" ? "El registro está lleno" : "No se pudo guardar, probá de nuevo"); }
+}
+async function delEntry(id, i){
+  const d = DIRS.get(id); if (!d) return;
+  const next = {dir: d.dir, entregas: d.entregas.filter((_,k)=>k!==i)};
+  DIRS.set(id,next); renderAll();
+  if (LOCAL){ if (!next.entregas.length) DIRS.delete(id); lsSave(); renderAll(); return; }
+  try { next.entregas.length ? await col.doc(id).set(next) : (DIRS.delete(id), await col.doc(id).delete(), renderAll()); }
+  catch{ toast("No se pudo borrar"); }
+}
+
+/* ---------- escaneo ---------- */
+$("#file").onchange = e => {
+  file = e.target.files[0]; if (!file) return;
+  const d = $("#drop"); d.classList.add("has");
+  d.innerHTML = '<img alt="Foto elegida" src="'+URL.createObjectURL(file)+'"><span>Tocá para cambiar la foto</span>';
+  $("#read").disabled = false; $("#status").textContent = "";
+};
+// misma lógica que irá en la página: desenfoque, gris, invertir franjas resaltadas (texto claro sobre color), estirar contraste
+function prep(d,w,h){ // d: RGBA Uint8ClampedArray
+  const g=new Float32Array(w*h), blue=new Uint8Array(w*h);
+  for(let i=0;i<w*h;i++){const r=d[i*4],G=d[i*4+1],b=d[i*4+2];g[i]=0.299*r+0.587*G+0.114*b;blue[i]=(b-Math.max(r,G)>45&&g[i]<170)?1:0;}
+  for(let y=0;y<h;y++){let c=0,x0=-1,x1=-1;for(let x=0;x<w;x++)if(blue[y*w+x]){c++;if(x0<0)x0=x;x1=x;}
+    if(c>w*0.25){for(let x=x0;x<=x1;x++)g[y*w+x]=255-g[y*w+x];}}
+  // band rows: also include rows of white text inside (text rows may have fewer blue px) -> dilate band vertically
+  const hist=new Uint32Array(256);for(const v of g)hist[Math.max(0,Math.min(255,v|0))]++;
+  let lo=0,hi=255,acc=0;for(let i=0;i<256;i++){acc+=hist[i];if(acc>w*h*0.02){lo=i;break}}acc=0;for(let i=255;i>=0;i--){acc+=hist[i];if(acc>w*h*0.02){hi=i;break}}
+  const out=new Uint8ClampedArray(w*h);for(let i=0;i<w*h;i++)out[i]=(g[i]-lo)*255/Math.max(1,hi-lo);
+  return out;
+}
+
+function parseLine(line){
+  const L = line.toUpperCase().replace(/[º]/g,"°");
+  const m = L.match(/(\d{4})\s*[-.–—~]\s*(\d{1,5})(?!\d)/);
+  if (!m) return null;
+  const before = L.slice(0, m.index), after = L.slice(m.index + m[0].length);
+  const hm = before.match(/(\d{1,2})[:.](\d{2})(?!.*\d{1,2}[:.]\d{2})/);
+  // un hueco grande (3+ espacios) separa la dirección de la columna siguiente
+  const afterCut = after.replace(/^\s+/, "").split(/\s{3,}/)[0];
+  let toks = afterCut.replace(/[|_]/g," ").replace(/(\d)°/g,"$1° ").trim().split(/\s+/).filter(Boolean)
+    .flatMap(t => /^AVDR$/.test(t) ? ["AV","DR"] : /^\d{1,2}°?[A-Z]$/.test(t) ? [t.replace(/[A-Z]$/,""), t.slice(-1)] : [t]);
+  const first = toks.findIndex(t => /[A-ZÁÉÍÓÚÑ]/.test(t));
+  if (first < 0) return null;
+  const nums = []; for (let k = first + 1; k < toks.length; k++) if (/^\d{1,5}$/.test(toks[k])) nums.push(k);
+  if (!nums.length) return null;
+  // la altura es el primer número que no forma parte del nombre (ej "9 DE JULIO")
+  const alt = nums.find(k => !(toks[k+1] && /^[A-ZÁÉÍÓÚÑ]{2,}\.?$/.test(toks[k+1]) && toks.slice(k+2).some(t => /^\d{1,5}$/.test(t)))) ?? nums[0];
+  const out = toks.slice(first, alt + 1); let i = alt + 1;
+  let floor = toks[i];
+  if (floor && (/^\d{1,3}°?$/.test(floor) || /^PB$/.test(floor))){
+    let f = floor.replace("°","");
+    // el símbolo ° suele leerse como un dígito más: "29" o "20" -> 2°, "204" -> 2°, "109" -> 10°
+    if (/^\d{3,}$/.test(f)) f = f[0] === "1" ? f.slice(0,2) : f[0];
+    else if (/^\d{2}$/.test(f) && +f > 25) f = f[0];
+    out.push(f === "PB" ? "PB" : f + "°"); i++;
+    const dep = toks[i]; if (dep && /^[A-Z0-9]$/.test(dep)) out.push(dep);
+  }
+  return {ticket: m[1] + " - " + m[2], hora: hm ? hm[1].padStart(2,"0")+":"+hm[2] : "", dir: out.join(" ").replace(/\s+([.,])/g,"$1")};
+}
+
+
+let worker = null, busy = false;
+function mergeReads(cands){
+  const groups = [];
+  const same = (a, b) => {
+    const [ap, as] = a.ticket.split(" - "), [bp, bs] = b.ticket.split(" - ");
+    if (a.ticket === b.ticket) return true;
+    const na = norm(a.dir), nb = norm(b.dir);
+    const sim = 1 - lev(na, nb) / Math.max(na.length, nb.length, 1);
+    return (ap === bp && lev(as, bs) <= 1 && sim > 0.6) || sim > 0.85;
+  };
+  for (const c of cands){ const g = groups.find(g => g.some(x => same(x, c))); g ? g.push(c) : groups.push([c]); }
+  const vote = (g, key) => { const m = new Map(); for (const c of g){ const v = m.get(c[key]) || {n:0, conf:0, v:c[key]}; v.n++; v.conf += c.conf; m.set(c[key], v); }
+    return [...m.values()].sort((a,b) => b.n - a.n || b.conf - a.conf)[0].v; };
+  // una lectura más corta (sin piso o depto) cuenta como apoyo a la más completa que empieza igual
+  const voteDir = g => {
+    const opts = [...new Set(g.map(c => c.dir))].map(d => {
+      const sup = g.filter(c => c.dir === d || d.startsWith(c.dir + " "));
+      return {d, n: sup.length, len: d.split(" ").length, conf: sup.reduce((a, c) => a + c.conf, 0)};
+    });
+    return opts.sort((a,b) => b.n - a.n || b.conf - a.conf || b.len - a.len)[0].d;
+  };
+  // una fila leída en una sola pasada y con baja confianza suele ser basura de otra parte de la pantalla
+  return groups.filter(g => g.length > 1 || g[0].conf >= 60)
+    .map(g => ({ticket: vote(g, "ticket"), hora: vote(g.filter(x => x.hora).length ? g.filter(x => x.hora) : g, "hora"), dir: voteDir(g)}));
+}
+async function getWorker(st){
+  if (worker) return worker;
+  if (!window.Tesseract) throw new Error("motor");
+  const base = new URL(".", document.baseURI).href;
+  worker = await Tesseract.createWorker("spa", 1, {
+    workerPath: base + "worker.min.js", corePath: base + "core/", langPath: base + "lang",
+    gzip: false, workerBlobURL: false,
+    logger: m => { if (m.status === "recognizing text") st.textContent = "Leyendo… " + Math.round(m.progress*100) + "%";
+                   else if (/load/.test(m.status)) st.textContent = "Preparando el lector (solo la primera vez)…"; }
+  });
+  await worker.setParameters({ tessedit_pageseg_mode: "6", preserve_interword_spaces: "1",
+    tessedit_char_whitelist: "ABCDEFGHIJKLMNOPQRSTUVWXYZÁÉÍÓÚÑÜ0123456789°º/:.,- " });
+  return worker;
+}
+async function prepImage(f, W = 1600, blur = 0.8){
+  let bmp; try { bmp = await createImageBitmap(f, {imageOrientation: "from-image"}); } catch { bmp = await createImageBitmap(f); }
+  const scale = W / bmp.width, H = Math.round(bmp.height * scale);
+  const c = document.createElement("canvas"); c.width = W; c.height = H;
+  const x = c.getContext("2d", {willReadFrequently: true});
+  x.imageSmoothingEnabled = true; x.imageSmoothingQuality = "high";
+  try { x.filter = `blur(${blur}px)`; } catch {}          // suaviza el moiré de la pantalla
+  x.drawImage(bmp, 0, 0, W, H); x.filter = "none";
+  const id = x.getImageData(0, 0, W, H), g = prep(id.data, W, H);
+  for (let i = 0; i < W*H; i++){ id.data[i*4] = id.data[i*4+1] = id.data[i*4+2] = g[i]; id.data[i*4+3] = 255; }
+  x.putImageData(id, 0, 0);
+  return c;
+}
+$("#read").onclick = async () => {
+  if (!file || busy) return;
+  busy = true; $("#read").disabled = true;
+  const st = $("#status"); st.className = "status"; st.textContent = "Preparando la foto…";
+  try {
+    const w = await getWorker(st);
+    // varias pasadas con distinta escala y suavizado; después se vota la mejor lectura de cada fila
+    const PASSES = [[1600, 0.8], [2000, 1.2], [1300, 0.5]], cands = [];
+    for (let k = 0; k < PASSES.length; k++){
+      st.textContent = `Leyendo… pasada ${k+1} de ${PASSES.length}`;
+      const { data } = await w.recognize(await prepImage(file, ...PASSES[k]));
+      const tl = data.text.split("\n").filter(t => t.trim()), dl = data.lines || [];
+      const lines = tl.map((t, i) => [t, dl.length === tl.length ? dl[i].confidence : 50]);
+      for (const [t, c] of lines){ const r = parseLine(t); if (r) cands.push({...r, conf: c}); }
+    }
+    rows = mergeReads(cands).map(r => ({...r, id: findMatch(r.dir)}));
+    st.textContent = rows.length ? `Leí ${rows.length} ${rows.length>1?"direcciones":"dirección"}. Revisalas antes de cargar.` : "No encontré direcciones. Probá con la foto más derecha, de frente a la pantalla y sin reflejo.";
+    renderResults();
+  } catch (e) {
+    st.className = "status err";
+    st.textContent = "No pude leer la foto. Revisá la conexión la primera vez (se descarga el lector) y probá de nuevo.";
+    try { await worker?.terminate(); } catch {} worker = null;
+  } finally { busy = false; $("#read").disabled = false; }
+};
+
+$("#addRow").onclick = () => { rows.push({hora:"",ticket:"",dir:"",id:null,edit:true}); renderResults(); };
+
+function scanCard(r, i, rank){
+  const d = r.id ? DIRS.get(r.id) : null, s = stats(d);
+  const top = s && rank===1 && s.avg>0;
+  const tipKey = "s"+i;
+  return `<div class="card${top?" top":""}">
+    <div class="rank">${s?rank:"–"}</div>
+    <div class="addr">${r.edit ? `<input type="text" id="e${i}" value="${esc(r.dir)}" placeholder="Dirección">` : esc(r.dir)}
+      <div class="meta">${esc(r.ticket)}${r.hora?" · "+esc(r.hora.slice(-5)):""}${d && norm(d.dir)!==norm(r.dir)?" · = "+esc(d.dir):""}</div>
+      ${pill(s)}</div>
+    <div class="avg">${s?fmt(s.avg):"—"}<small>${s?`${s.n} entrega${s.n>1?"s":""} · ${s.con} con propina`:"nunca cargada"}</small></div>
+    <div class="actions">
+      ${r.edit ? `<button class="btn sm" data-ok="${i}">Listo</button>` : `<button class="btn sm" data-tip="${tipKey}">Cargar propina</button><button class="btn ghost sm" data-edit="${i}">Corregir</button>`}
+    </div>
+    ${openTip===tipKey ? tipBox(tipKey) : ""}
+  </div>`;
+}
+function tipBox(key){
+  return `<div class="tipbox"><div class="chips">
+      <button class="chip zero" data-q="0">No dio</button>${[500,1000,1500,2000,3000].map(v=>`<button class="chip" data-q="${v}">${fmt(v)}</button>`).join("")}</div>
+    <div class="inrow"><input type="number" class="money" id="amt-${key}" inputmode="numeric" placeholder="Otro monto"><button class="btn sm" data-save="${key}">Guardar</button></div></div>`;
+}
+function sortedRows(){
+  return rows.map((r,i)=>({r,i,s:stats(r.id?DIRS.get(r.id):null)}))
+    .sort((a,b)=> (b.s?b.s.avg:0.001) - (a.s?a.s.avg:0.001)); // sin datos: debajo de las que pagan, arriba de las que nunca dan
+}
+function renderResults(){
+  const has = rows.length>0;
+  $("#resLbl").hidden = $("#legend").hidden = $("#addRowWrap").hidden = !has;
+  let rank = 0;
+  $("#results").innerHTML = sortedRows().map(x=>scanCard(x.r,x.i, x.s? ++rank : 0)).join("");
+}
+$("#results").onclick = e => {
+  const b = e.target.closest("button"); if (!b) return;
+  if (b.dataset.tip){ openTip = openTip===b.dataset.tip?null:b.dataset.tip; renderResults(); return; }
+  if (b.dataset.edit){ rows[+b.dataset.edit].edit = true; renderResults(); $("#e"+b.dataset.edit)?.focus(); return; }
+  if (b.dataset.ok){ const i=+b.dataset.ok, v=$("#e"+i).value.trim(); if(!v){rows.splice(i,1)} else {rows[i].dir=v; rows[i].edit=false; rows[i].id=findMatch(v)} renderResults(); return; }
+  const card = b.closest(".card"), key = openTip, i = key ? +key.slice(1) : -1;
+  if (i<0) return;
+  let amt = b.dataset.q!==undefined ? +b.dataset.q : (b.dataset.save ? $("#amt-"+key).value : null);
+  if (amt===null) return;
+  if (amt==="" ){ toast("Escribí un monto o elegí uno"); return; }
+  const r = rows[i]; openTip = null;
+  addTip(r.dir, +amt, r.ticket).then(()=>{ r.id = r.id || findMatch(r.dir) || idOf(r.dir); renderResults(); });
+};
+
+/* ---------- registro ---------- */
+function renderDirs(){
+  const q = norm($("#q").value);
+  const list = [...DIRS.entries()].map(([id,d])=>({id,d,s:stats(d)})).filter(x=>x.s && (!q || norm(x.d.dir).includes(q)))
+    .sort((a,b)=>b.s.avg-a.s.avg);
+  if (!DIRS.size){ $("#dirs").innerHTML = `<div class="empty"><b>Todavía no cargaste propinas.</b><br>Escaneá una foto y tocá "Cargar propina" en cada dirección, o cargala a mano acá arriba. Las direcciones van a aparecer ordenadas de la que más da a la que menos.</div>`; return; }
+  if (!list.length){ $("#dirs").innerHTML = `<div class="empty">Ninguna dirección coincide con "${esc($("#q").value)}".</div>`; return; }
+  $("#dirs").innerHTML = list.map((x,k)=>{
+    const tk = "d:"+x.id;
+    return `<div class="card${k===0&&x.s.avg>0?" top":""}">
+      <div class="rank">${k+1}</div>
+      <div class="addr">${esc(x.d.dir)}<div class="meta">última ${fmt(x.s.last.m)} · ${new Date(x.s.last.f).toLocaleDateString("es-AR")}</div>${pill(x.s)}</div>
+      <div class="avg">${fmt(x.s.avg)}<small>${x.s.n} entrega${x.s.n>1?"s":""} · ${x.s.con} con propina</small></div>
+      <div class="actions"><button class="btn sm" data-tip="${esc(tk)}">Cargar propina</button><button class="btn ghost sm" data-hist="${esc(x.id)}">${openHist===x.id?"Ocultar":"Ver"} historial</button></div>
+      ${openTip===tk ? tipBox(tk) : ""}
+      ${openHist===x.id ? `<div class="hist">${x.d.entregas.map((e,i)=>({e,i})).reverse().map(({e,i})=>`<div><span>${new Date(e.f).toLocaleDateString("es-AR")} ${e.t?esc(e.t):""}</span><span>${fmt(e.m)} <button data-del="${i}" data-id="${esc(x.id)}" aria-label="Borrar">borrar</button></span></div>`).join("")}</div>` : ""}
+    </div>`;
+  }).join("");
+}
+$("#dirs").onclick = e => {
+  const b = e.target.closest("button"); if (!b) return;
+  if (b.dataset.tip){ openTip = openTip===b.dataset.tip?null:b.dataset.tip; renderDirs(); return; }
+  if (b.dataset.hist){ openHist = openHist===b.dataset.hist?null:b.dataset.hist; renderDirs(); return; }
+  if (b.dataset.del){ delEntry(b.dataset.id, +b.dataset.del); return; }
+  const key = openTip; if (!key || !key.startsWith("d:")) return;
+  const amt = b.dataset.q!==undefined ? b.dataset.q : (b.dataset.save ? document.getElementById("amt-"+key).value : null);
+  if (amt===null) return; if (amt===""){ toast("Escribí un monto o elegí uno"); return; }
+  const d = DIRS.get(key.slice(2)); openTip = null; addTip(d.dir, +amt);
+};
+$("#q").oninput = renderDirs;
+$("#mSave").onclick = () => {
+  const a = $("#mAddr").value.trim(), m = $("#mAmt").value;
+  if (!a){ toast("Escribí la dirección"); return; }
+  if (m===""){ toast("Escribí el monto (0 si no dio)"); return; }
+  addTip(a, +m); $("#mAddr").value=""; $("#mAmt").value="";
+};
+
+function renderSum(){
+  const today = new Date().toDateString(); let t=0, n=0;
+  for (const d of DIRS.values()) for (const e of d.entregas) if (new Date(e.f).toDateString()===today){ t+=e.m; n++; }
+  $("#sum").innerHTML = `Hoy <strong>${fmt(t)}</strong><br>${n} entrega${n===1?"":"s"}`;
+}
+function renderAll(){ renderSum(); renderResults(); renderDirs(); }
+
+/* ---------- pestañas ---------- */
+function tab(which){
+  $("#t-scan").setAttribute("aria-selected", which==="scan"); $("#t-dirs").setAttribute("aria-selected", which==="dirs");
+  $("#v-scan").hidden = which!=="scan"; $("#v-dirs").hidden = which!=="dirs";
+  try{ localStorage.setItem("tab",which) }catch{}
+}
+$("#t-scan").onclick = ()=>tab("scan"); $("#t-dirs").onclick = ()=>tab("dirs");
+try{ if(localStorage.getItem("tab")==="dirs") tab("dirs") }catch{}
+
+let tt; function toast(m){ const t=$("#toast"); t.textContent=m; t.hidden=false; clearTimeout(tt); tt=setTimeout(()=>t.hidden=true,2600); }
+
+renderAll();
+
+/* ---------- guardado en el celular ---------- */
+const LS_KEY = "libreta-propinas-v1";
+let LOCAL = !window.claude;
+function lsSave(){ try { localStorage.setItem(LS_KEY, JSON.stringify(Object.fromEntries(DIRS))); } catch { toast("No se pudo guardar en el celular"); } }
+function lsLoad(){ try { return JSON.parse(localStorage.getItem(LS_KEY)) || {}; } catch { return {}; } }
+$("#exp").onclick = () => {
+  const blob = new Blob([JSON.stringify(Object.fromEntries(DIRS), null, 1)], {type: "application/json"});
+  const a = document.createElement("a"); a.href = URL.createObjectURL(blob);
+  a.download = "propinas-" + new Date().toISOString().slice(0,10) + ".json"; a.click();
+  setTimeout(() => URL.revokeObjectURL(a.href), 5000);
+};
+$("#impFile").onchange = async e => {
+  const f = e.target.files[0]; if (!f) return;
+  try {
+    const data = JSON.parse(await f.text()); let n = 0;
+    for (const [id, d] of Object.entries(data)){
+      if (!d || !Array.isArray(d.entregas)) continue;
+      const cur = DIRS.get(id), seen = new Set((cur?.entregas||[]).map(x => x.f + "|" + x.m));
+      const add = d.entregas.filter(x => !seen.has(x.f + "|" + x.m));
+      DIRS.set(id, {dir: cur?.dir || d.dir, entregas: [...(cur?.entregas||[]), ...add].sort((a,b) => a.f < b.f ? -1 : 1)}); n += add.length;
+    }
+    lsSave(); renderAll(); toast("Copia restaurada: " + n + " entregas nuevas");
+  } catch { toast("Ese archivo no es una copia de la libreta"); }
+  e.target.value = "";
+};
+if (LOCAL){
+  $("#backup").hidden = false;
+  DIRS = new Map(Object.entries(lsLoad()));
+  try { navigator.storage?.persist?.(); } catch {}
+  renderAll();
+}
+
+/* ---------- arranque de capacidades ---------- */
+if (!LOCAL) (async () => {
+  const user = await claude.use("user");
+  db = await claude.use("db");
+  uid = user ? await user.id() : null;
+  if (!db || !uid){ $("#status").textContent = "Iniciá sesión para que las propinas se guarden."; return; }
+  col = db.doc("data/users/"+uid+"/libreta").collection("dirs");
+  col.onSnapshot(snap => {
+    DIRS = new Map(snap.docs.map(d=>[d.id, d.data()]));
+    for (const r of rows) if (r.id && !DIRS.has(r.id)) r.id = findMatch(r.dir);
+    renderAll();
+  }, () => toast("Se perdió la conexión con el registro"));
+})();
+</script>
